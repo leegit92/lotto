@@ -37,4 +37,4 @@ A web application that generates six random numbers between 1 and 45 for lotto g
    uvicorn main:app --reload
    ```
 
-4. Open http://localhost:8000 in your browser 
+4. Open http://localhost:8000 in your browser
