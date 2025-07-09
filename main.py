@@ -31,9 +31,15 @@ app = FastAPI()
 
 @app.on_event("startup")
 async def on_startup():
-    # Create tables if they don't exist (optional, for dev)
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    try:
+        # Create tables if they don't exist (optional, for dev)
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        print("✅ Database tables created successfully")
+    except Exception as e:
+        print(f"❌ Database connection failed: {e}")
+        # Don't crash the app if DB is not available
+        pass
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root():
@@ -256,17 +262,25 @@ async def get_numbers():
         await session.commit()
     return {"numbers": numbers}
 
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy", "message": "Lotto app is running"}
+
 @app.get("/leaderboard")
 async def leaderboard():
-    # Count frequency of each number 1-45
-    async with async_session() as session:
-        result = await session.execute(select(GeneratedNumbers.numbers))
-        all_numbers = []
-        for row in result.scalars():
-            all_numbers.extend(row)
-        freq = {i: 0 for i in range(1, 46)}
-        for num in all_numbers:
-            freq[num] += 1
-        # Sort by frequency, then by number
-        leaderboard = sorted(freq.items(), key=lambda x: (-x[1], x[0]))
-        return JSONResponse({"leaderboard": leaderboard})
+    try:
+        # Count frequency of each number 1-45
+        async with async_session() as session:
+            result = await session.execute(select(GeneratedNumbers.numbers))
+            all_numbers = []
+            for row in result.scalars():
+                all_numbers.extend(row)
+            freq = {i: 0 for i in range(1, 46)}
+            for num in all_numbers:
+                freq[num] += 1
+            # Sort by frequency, then by number
+            leaderboard = sorted(freq.items(), key=lambda x: (-x[1], x[0]))
+            return JSONResponse({"leaderboard": leaderboard})
+    except Exception as e:
+        print(f"Leaderboard error: {e}")
+        return JSONResponse({"leaderboard": [], "error": "Database not available"})
